@@ -125,14 +125,14 @@ export const stagingAuthSettings = defineType({
           title: 'Staging URL',
           type: 'url',
           description: 'The full URL of your staging website (e.g., https://staging.example.com). Leave empty to use the SANITY_STUDIO_STAGING_URL environment variable.',
-          hidden: ({ document }) => !document?.advanced?.enableOverrides,
+          hidden: ({ document }: any) => !document?.advanced?.enableOverrides,
         }),
         defineField({
           name: 'cookieName',
           title: 'Authentication Cookie Name',
           type: 'string',
           description: 'The name of the cookie used to store authentication tokens. Default is "staging-auth". Only change this if you have a specific reason to avoid cookie conflicts.',
-          hidden: ({ document }) => !document?.advanced?.enableOverrides,
+          hidden: ({ document }: any) => !document?.advanced?.enableOverrides,
         }),
         defineField({
           name: 'tokenValidityDays',
@@ -140,7 +140,7 @@ export const stagingAuthSettings = defineType({
           type: 'number',
           description: 'Number of days before authentication tokens expire and users need to re-authenticate. Default is 7 days. Shorter periods are more secure but less convenient.',
           validation: (Rule) => Rule.min(1).max(365),
-          hidden: ({ document }) => !document?.advanced?.enableOverrides,
+          hidden: ({ document }: any) => !document?.advanced?.enableOverrides,
         }),
         defineField({
           name: 'enableOverrides',

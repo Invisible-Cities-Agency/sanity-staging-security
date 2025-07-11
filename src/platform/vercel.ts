@@ -7,7 +7,6 @@
  */
 
 import type { Logger, LogContext } from '../types'
-import { Platform } from './index'
 
 /**
  * Vercel Edge Runtime detection
@@ -181,7 +180,7 @@ export async function vercelFetch(
           )
         }
       } catch (error) {
-        if (error.name === 'AbortError') {
+        if (error instanceof Error && error.name === 'AbortError') {
           throw new Error('Request timeout on Vercel Edge Runtime')
         }
         

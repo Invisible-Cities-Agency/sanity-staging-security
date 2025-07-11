@@ -4,6 +4,12 @@
  */
 
 /**
+ * Generic function type with proper constraints
+ */
+type AnyFunction = (...args: any[]) => any
+type AsyncFunction<T = any> = (...args: any[]) => Promise<T>
+
+/**
  * Creates a throttled version of a function that limits how often it can be called
  * 
  * @param func - The function to throttle
@@ -19,16 +25,19 @@
  * throttledValidate() // Ignored
  * ```
  */
-export function throttle<T extends (...args: any[]) => any>(
-  func: T,
+export function throttle<TFunc extends AnyFunction>(
+  func: TFunc,
   delay: number
-): (...args: Parameters<T>) => ReturnType<T> | undefined {
+): (...args: Parameters<TFunc>) => ReturnType<TFunc> | undefined {
   let lastCall = 0
   let timeout: NodeJS.Timeout | null = null
-  let lastArgs: Parameters<T> | null = null
-  let lastThis: any = null
+  let lastArgs: Parameters<TFunc> | null = null
+  let lastThis: ThisParameterType<TFunc> | null = null
 
-  return function throttled(this: any, ...args: Parameters<T>): ReturnType<T> | undefined {
+  return function throttled(
+    this: ThisParameterType<TFunc>,
+    ...args: Parameters<TFunc>
+  ): ReturnType<TFunc> | undefined {
     const now = Date.now()
     const timeSinceLastCall = now - lastCall
 
@@ -52,7 +61,7 @@ export function throttle<T extends (...args: any[]) => any>(
       timeout = setTimeout(() => {
         lastCall = Date.now()
         timeout = null
-        if (lastArgs) {
+        if (lastArgs && lastThis !== null) {
           func.apply(lastThis, lastArgs)
         }
       }, remainingTime)
@@ -76,17 +85,17 @@ export function throttle<T extends (...args: any[]) => any>(
  * const promise2 = throttledFetch() // Returns same promise as promise1
  * ```
  */
-export function throttleAsync<T extends (...args: any[]) => Promise<any>>(
-  func: T,
+export function throttleAsync<TFunc extends AsyncFunction>(
+  func: TFunc,
   delay: number
-): (...args: Parameters<T>) => Promise<ReturnType<T>> {
+): (...args: Parameters<TFunc>) => Promise<Awaited<ReturnType<TFunc>>> {
   let lastCall = 0
-  let currentPromise: Promise<ReturnType<T>> | null = null
+  let currentPromise: Promise<Awaited<ReturnType<TFunc>>> | null = null
 
   return async function throttledAsync(
-    this: any,
-    ...args: Parameters<T>
-  ): Promise<ReturnType<T>> {
+    this: ThisParameterType<TFunc>,
+    ...args: Parameters<TFunc>
+  ): Promise<Awaited<ReturnType<TFunc>>> {
     const now = Date.now()
     const timeSinceLastCall = now - lastCall
 
@@ -97,12 +106,13 @@ export function throttleAsync<T extends (...args: any[]) => Promise<any>>(
 
     // Otherwise, create new promise
     lastCall = now
-    currentPromise = func.apply(this, args)
+    currentPromise = func.apply(this, args) as Promise<Awaited<ReturnType<TFunc>>>
     
     // Clear the promise reference after it resolves
-    currentPromise.finally(() => {
+    const promiseRef = currentPromise
+    promiseRef.finally(() => {
       // Only clear if this is still the current promise
-      if (currentPromise === currentPromise) {
+      if (currentPromise === promiseRef) {
         setTimeout(() => {
           currentPromise = null
         }, delay)
@@ -110,5 +120,67 @@ export function throttleAsync<T extends (...args: any[]) => Promise<any>>(
     })
 
     return currentPromise
+  }
+}
+
+/**
+ * Type-safe throttle overloads for common use cases
+ */
+export interface ThrottleOptions {
+  leading?: boolean  // Execute on leading edge (default: true)
+  trailing?: boolean // Execute on trailing edge (default: true)
+}
+
+/**
+ * Advanced throttle with more control over execution timing
+ */
+export function throttleAdvanced<TFunc extends AnyFunction>(
+  func: TFunc,
+  delay: number,
+  options: ThrottleOptions = {}
+): (...args: Parameters<TFunc>) => ReturnType<TFunc> | undefined {
+  const { leading = true, trailing = true } = options
+  
+  let lastCall = 0
+  let timeout: NodeJS.Timeout | null = null
+  let lastArgs: Parameters<TFunc> | null = null
+  let lastThis: ThisParameterType<TFunc> | null = null
+  let lastResult: ReturnType<TFunc> | undefined
+
+  return function throttled(
+    this: ThisParameterType<TFunc>,
+    ...args: Parameters<TFunc>
+  ): ReturnType<TFunc> | undefined {
+    const now = Date.now()
+    const timeSinceLastCall = now - lastCall
+
+    // Store context and args
+    lastArgs = args
+    lastThis = this
+
+    // Leading edge execution
+    if (timeSinceLastCall >= delay && leading) {
+      lastCall = now
+      if (timeout) {
+        clearTimeout(timeout)
+        timeout = null
+      }
+      lastResult = func.apply(this, args)
+      return lastResult
+    }
+
+    // Schedule trailing edge execution
+    if (!timeout && trailing) {
+      const remainingTime = delay - timeSinceLastCall
+      timeout = setTimeout(() => {
+        lastCall = Date.now()
+        timeout = null
+        if (lastArgs && lastThis !== null) {
+          lastResult = func.apply(lastThis, lastArgs)
+        }
+      }, remainingTime)
+    }
+
+    return lastResult
   }
 }

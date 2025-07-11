@@ -69,7 +69,7 @@ export interface StagingAuthBridgeOptions {
  * ]
  * ```
  */
-export const stagingAuthBridge = definePlugin<StagingAuthBridgeOptions | void>((options = {}) => ({
+export const stagingAuthBridge = definePlugin<StagingAuthBridgeOptions | void>((options?: StagingAuthBridgeOptions) => ({
   name: 'staging-auth-bridge',
   
   // Add schema types
@@ -87,7 +87,7 @@ export const stagingAuthBridge = definePlugin<StagingAuthBridgeOptions | void>((
   
   // Store options for use in structure builder
   __internal: {
-    hideFromSettings: options.hideFromSettings || false,
+    hideFromSettings: options?.hideFromSettings || false,
   },
 }))
 

@@ -112,6 +112,11 @@ export interface UseStudioAuthReturn {
 }
 
 /**
+ * Log level type
+ */
+export type LogLevel = 'debug' | 'info' | 'warn' | 'error'
+
+/**
  * Logger interface for the plugin
  */
 export interface Logger {

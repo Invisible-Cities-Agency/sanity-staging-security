@@ -13,8 +13,7 @@ import { Platform, getFetchOptions, compatFetch } from '../platform'
 import { vercel } from '../platform/vercel'
 import type { 
   ValidationResult, 
-  ValidationResponseUnknown,
-  Logger 
+  ValidationResponseUnknown
 } from '../types'
 import { parseValidationResponse } from '../types/branded'
 
@@ -94,7 +93,7 @@ export async function validateStagingAccess(
     action: 'validate_staging_access_start',
     apiUrl: isProduction ? apiUrl.replace(/https?:\/\/[^\/]+/, '[REDACTED]') : apiUrl,
     tokenLength: sessionToken.length,
-    userRoles: userRoles.length, // Only log count, not actual roles
+    userRoles: userRoles?.length || 0, // Only log count, not actual roles
     hasUserInfo: !!userName || !!userEmail,
     environment: process.env.NODE_ENV
   }

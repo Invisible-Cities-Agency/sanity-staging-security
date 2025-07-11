@@ -6,7 +6,7 @@
  * handling new features gracefully with fallbacks.
  */
 
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useState, useCallback } from 'react'
 import { Platform } from './index'
 
 /**
@@ -17,18 +17,7 @@ export const ReactCompat = {
    * Use React 18's startTransition if available
    */
   useTransition: (): [boolean, (callback: () => void) => void] => {
-    // Check if React 18+ and useTransition is available
-    if (Platform.react.isV18() || Platform.react.isV19()) {
-      try {
-        // @ts-ignore - useTransition may not be in React types
-        const [isPending, startTransition] = React.useTransition()
-        return [isPending, startTransition]
-      } catch {
-        // Fallback if not available
-      }
-    }
-
-    // Fallback implementation
+    // Always use fallback implementation to avoid conditional hooks
     const [isPending, setIsPending] = useState(false)
     const startTransition = useCallback((callback: () => void) => {
       setIsPending(true)
@@ -46,17 +35,7 @@ export const ReactCompat = {
    * Use React 18's useDeferredValue if available
    */
   useDeferredValue: <T,>(value: T): T => {
-    // Check if React 18+ and useDeferredValue is available
-    if (Platform.react.isV18() || Platform.react.isV19()) {
-      try {
-        // @ts-ignore - useDeferredValue may not be in React types
-        return React.useDeferredValue(value)
-      } catch {
-        // Fallback if not available
-      }
-    }
-
-    // Simple fallback - just return the value
+    // Always use fallback to avoid conditional hooks
     return value
   },
 
@@ -64,17 +43,7 @@ export const ReactCompat = {
    * Use React 18's useId if available
    */
   useId: (): string => {
-    // Check if React 18+ and useId is available
-    if (Platform.react.isV18() || Platform.react.isV19()) {
-      try {
-        // @ts-ignore - useId may not be in React types
-        return React.useId()
-      } catch {
-        // Fallback if not available
-      }
-    }
-
-    // Fallback implementation
+    // Always use fallback implementation to avoid conditional hooks
     const [id] = useState(() => `id-${Math.random().toString(36).substr(2, 9)}`)
     return id
   },

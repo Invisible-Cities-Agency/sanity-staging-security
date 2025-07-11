@@ -16,7 +16,7 @@ import { StagingAuthSettingsStatus } from '../StagingAuthSettingsStatus'
  * Replaces the default object input with a status display component
  * for the statusInfo field in the settings schema.
  */
-export function StatusInput(props: ObjectInputProps) {
+export function StatusInput(_props: ObjectInputProps) {
   // Hide the default input UI and show our custom status component
   return <StagingAuthSettingsStatus />
 }

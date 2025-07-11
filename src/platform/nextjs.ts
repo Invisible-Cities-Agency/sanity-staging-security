@@ -32,7 +32,7 @@ export const NextJS = {
    */
   major: (): number => {
     const version = NextJS.version()
-    return parseInt(version.split('.')[0], 10)
+    return parseInt(version.split('.')[0] || '0', 10)
   },
 
   /**
@@ -57,18 +57,7 @@ export const routerCompat = {
   getPathname: (): string => {
     if (typeof window === 'undefined') return ''
 
-    // Next.js 13+ App Router
-    if (NextJS.is13Plus()) {
-      try {
-        // @ts-ignore - Next may not be in scope
-        const { usePathname } = require('next/navigation')
-        return usePathname() || ''
-      } catch {
-        // Fallback to window location
-      }
-    }
-
-    // Pages Router or fallback
+    // Use standard browser API - works with all Next.js versions
     return window.location.pathname
   },
 
@@ -78,18 +67,7 @@ export const routerCompat = {
   getSearchParams: (): URLSearchParams => {
     if (typeof window === 'undefined') return new URLSearchParams()
 
-    // Next.js 13+ App Router
-    if (NextJS.is13Plus()) {
-      try {
-        // @ts-ignore - Next may not be in scope
-        const { useSearchParams } = require('next/navigation')
-        return useSearchParams() || new URLSearchParams()
-      } catch {
-        // Fallback to window location
-      }
-    }
-
-    // Pages Router or fallback
+    // Use standard browser API - works with all Next.js versions
     return new URLSearchParams(window.location.search)
   },
 
@@ -99,20 +77,7 @@ export const routerCompat = {
   push: (url: string): void => {
     if (typeof window === 'undefined') return
 
-    // Next.js 13+ App Router
-    if (NextJS.is13Plus()) {
-      try {
-        // @ts-ignore - Next may not be in scope
-        const { useRouter } = require('next/navigation')
-        const router = useRouter()
-        router.push(url)
-        return
-      } catch {
-        // Fallback to window navigation
-      }
-    }
-
-    // Fallback
+    // Use standard browser API - works with all Next.js versions
     window.location.href = url
   },
 }

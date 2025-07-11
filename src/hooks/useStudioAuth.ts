@@ -15,9 +15,7 @@ import { RoleUtils } from '../utils/roles'
 import { throttleAsync } from '../utils/throttle'
 import type { 
   UseStudioAuthReturn, 
-  ValidationResult,
-  SanityUserUnknown,
-  SanityUser 
+  ValidationResult
 } from '../types'
 import { parseSanityUser } from '../types/branded'
 
@@ -69,15 +67,14 @@ export function useStudioAuth(): UseStudioAuthReturn {
    * Internal validation function (not throttled)
    */
   const validateSessionInternal = useCallback(async (): Promise<ValidationResult> => {
-    // Cast current user to branded type and validate
-    const userUnknown = currentUser as SanityUserUnknown
+    // Debug logging for role investigation (PII-safe)
+    Debug.log('useStudioAuth', 'User validation started', {
+      hasUserId: !!currentUser?.id,
+      rolesType: typeof currentUser?.roles,
+      rolesCount: Array.isArray(currentUser?.roles) ? currentUser.roles.length : 0
+    })
     
-    // Debug logging for role investigation
-    Debug.log('useStudioAuth', 'Raw currentUser:', currentUser)
-    Debug.log('useStudioAuth', 'User roles type:', typeof currentUser?.roles)
-    Debug.log('useStudioAuth', 'User roles value:', currentUser?.roles)
-    
-    const validatedUser = parseSanityUser(userUnknown)
+    const validatedUser = parseSanityUser(currentUser)
     
     if (!validatedUser?.id) {
       throw new Error('No user session found')
@@ -101,9 +98,12 @@ export function useStudioAuth(): UseStudioAuthReturn {
       const userName = validatedUser.name || undefined
       const userEmail = validatedUser.email || undefined
       
-      // Debug logging for extracted roles
-      Debug.log('useStudioAuth', 'Extracted roles:', userRoles)
-      Debug.log('useStudioAuth', 'Validated user:', validatedUser)
+      // Debug logging for extracted roles (PII-safe)
+      Debug.log('useStudioAuth', 'Validation prepared', {
+        roleCount: userRoles.length,
+        hasName: !!userName,
+        hasEmail: !!userEmail
+      })
       
       // Validate with our API
       const result = await validateStagingAccess(sessionToken, userRoles, userName, userEmail)
@@ -128,10 +128,10 @@ export function useStudioAuth(): UseStudioAuthReturn {
     [validateSessionInternal]
   )
 
-  const clearValidation = useCallback(() => {
+  const clearValidation = () => {
     setLastValidation(null)
     setError(null)
-  }, [])
+  }
 
   return {
     validateSession,

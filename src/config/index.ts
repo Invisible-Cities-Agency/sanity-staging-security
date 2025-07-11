@@ -14,11 +14,12 @@
  * All environment variables are validated at startup.
  */
 
-import type { StagingAuthConfig, EnvironmentConfig } from '../types'
+import type { StagingAuthConfig } from '../types'
 import { z } from 'zod'
 import { vercel } from '../platform/vercel'
 import { Platform } from '../platform'
 import { RoleUtils } from '../utils/roles'
+import { deepClone } from '../utils/configUtils'
 
 /**
  * Environment variable schema for validation
@@ -30,20 +31,30 @@ const EnvironmentSchema = z.object({
   SANITY_STUDIO_DEBUG: z.string().optional(),
   SANITY_STUDIO_STAGING_URL: z.string().url().optional(),
   SANITY_STUDIO_STAGING_COOKIE_NAME: z.string().optional(),
-  SANITY_STUDIO_STAGING_TOKEN_VALIDITY_DAYS: z.string().regex(/^\d+$/).optional(),
-  SANITY_STUDIO_STAGING_RATE_LIMIT_MS: z.string().regex(/^\d+$/).optional(),
+  SANITY_STUDIO_STAGING_TOKEN_VALIDITY_DAYS: z.coerce.number().int().positive().optional(),
+  SANITY_STUDIO_STAGING_RATE_LIMIT_MS: z.coerce.number().int().positive().optional(),
 })
 
 
 /**
+ * Parsed environment configuration type
+ */
+type ParsedEnvironment = z.infer<typeof EnvironmentSchema>
+
+/**
  * Get validated environment configuration
  */
-function getEnvironment(): EnvironmentConfig {
+function getEnvironment(): ParsedEnvironment {
   try {
     return EnvironmentSchema.parse(process.env)
   } catch (error) {
     console.warn('[StagingAuthBridge] Invalid environment configuration:', error)
-    return process.env as EnvironmentConfig
+    // Return raw env with defaults for numeric fields
+    return {
+      ...process.env,
+      SANITY_STUDIO_STAGING_TOKEN_VALIDITY_DAYS: process.env.SANITY_STUDIO_STAGING_TOKEN_VALIDITY_DAYS ? parseInt(process.env.SANITY_STUDIO_STAGING_TOKEN_VALIDITY_DAYS, 10) : undefined,
+      SANITY_STUDIO_STAGING_RATE_LIMIT_MS: process.env.SANITY_STUDIO_STAGING_RATE_LIMIT_MS ? parseInt(process.env.SANITY_STUDIO_STAGING_RATE_LIMIT_MS, 10) : undefined
+    } as ParsedEnvironment
   }
 }
 
@@ -99,13 +110,7 @@ async function buildConfig(): Promise<StagingAuthConfig> {
   const isDebug = env.SANITY_STUDIO_DEBUG === 'true' || isDevelopment
 
   // Start with deep copy of defaults to avoid mutations
-  const config: StagingAuthConfig = {
-    ...defaults,
-    urls: { ...defaults.urls, apiEndpoints: { ...defaults.urls.apiEndpoints } },
-    security: { ...defaults.security, allowedOrigins: [...defaults.security.allowedOrigins] },
-    logging: { ...defaults.logging },
-    features: { ...defaults.features }
-  }
+  const config = deepClone(defaults)
   
   // Check for Edge Config overrides (Vercel only)
   if (Platform.deployment.isVercel() && vercel.edgeConfig.isAvailable()) {
@@ -160,11 +165,11 @@ async function buildConfig(): Promise<StagingAuthConfig> {
   }
 
   if (env.SANITY_STUDIO_STAGING_TOKEN_VALIDITY_DAYS) {
-    config.security.tokenValidityDays = parseInt(env.SANITY_STUDIO_STAGING_TOKEN_VALIDITY_DAYS, 10)
+    config.security.tokenValidityDays = env.SANITY_STUDIO_STAGING_TOKEN_VALIDITY_DAYS
   }
 
   if (env.SANITY_STUDIO_STAGING_RATE_LIMIT_MS) {
-    config.security.rateLimitRetryMs = parseInt(env.SANITY_STUDIO_STAGING_RATE_LIMIT_MS, 10)
+    config.security.rateLimitRetryMs = env.SANITY_STUDIO_STAGING_RATE_LIMIT_MS
   }
 
   // Configure logging based on environment
@@ -205,7 +210,6 @@ async function buildConfig(): Promise<StagingAuthConfig> {
  * Cached configuration instance
  */
 let cachedConfig: StagingAuthConfig | null = null
-let configPromise: Promise<StagingAuthConfig> | null = null
 let configInitialized = false
 
 /**
@@ -300,13 +304,7 @@ function buildSyncConfig(): StagingAuthConfig {
   const isDebug = env.SANITY_STUDIO_DEBUG === 'true' || isDevelopment
 
   // Start with deep copy of defaults to avoid mutations
-  const config: StagingAuthConfig = {
-    ...defaults,
-    urls: { ...defaults.urls, apiEndpoints: { ...defaults.urls.apiEndpoints } },
-    security: { ...defaults.security, allowedOrigins: [...defaults.security.allowedOrigins] },
-    logging: { ...defaults.logging },
-    features: { ...defaults.features }
-  }
+  const config = deepClone(defaults)
   
   // Apply environment overrides
   config.urls.staging = env.SANITY_STUDIO_STAGING_URL || config.urls.staging

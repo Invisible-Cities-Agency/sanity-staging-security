@@ -1,55 +1,29 @@
 /**
- * @fileoverview Role management utilities
- * @module staging-auth-bridge/utils/roles
- * 
- * Centralizes all role-related logic including normalization,
- * priority handling, and extraction from user objects.
+ * Role management utilities for the Staging Auth Bridge
  */
 
 import type { SanityUser } from '../types'
 
-/**
- * Role name mappings for normalization
- * Maps various role name formats to canonical names
- */
-const roleNameMappings: Record<string, string> = {
-  'admin': 'administrator',
-  'Admin': 'administrator',
-  'ADMIN': 'administrator',
-  'administrator': 'administrator',
-  'Administrator': 'administrator',
-  'ADMINISTRATOR': 'administrator',
-  'dev': 'developer',
-  'Dev': 'developer',
-  'DEV': 'developer',
-  'developer': 'developer',
-  'Developer': 'developer',
-  'DEVELOPER': 'developer',
-  'editor': 'editor',
-  'Editor': 'editor',
-  'EDITOR': 'editor',
-  'contrib': 'contributor',
-  'Contrib': 'contributor',
-  'CONTRIB': 'contributor',
-  'contributor': 'contributor',
-  'Contributor': 'contributor',
-  'CONTRIBUTOR': 'contributor',
-  'viewer': 'viewer',
-  'Viewer': 'viewer',
-  'VIEWER': 'viewer',
+// Canonical role names and their aliases
+const ROLE_ALIASES: Record<string, string[]> = {
+  'administrator': ['admin'],
+  'developer': ['dev'],
+  'editor': [],
+  'contributor': ['contrib'],
+  'viewer': []
 }
 
-/**
- * Role priority order (highest to lowest)
- * Used for determining the most privileged role
- */
-const rolePriority: string[] = [
-  'administrator',
-  'developer', 
-  'editor',
-  'contributor',
-  'viewer'
-]
+// Build reverse mapping for efficient lookups
+const roleNameMap = new Map<string, string>()
+for (const [canonical, aliases] of Object.entries(ROLE_ALIASES)) {
+  roleNameMap.set(canonical.toLowerCase(), canonical)
+  for (const alias of aliases) {
+    roleNameMap.set(alias.toLowerCase(), canonical)
+  }
+}
+
+// Role priority order (highest to lowest)
+const ROLE_PRIORITY = ['administrator', 'developer', 'editor', 'contributor', 'viewer'] as const
 
 /**
  * Role utilities for managing user roles
@@ -57,62 +31,48 @@ const rolePriority: string[] = [
 export const RoleUtils = {
   /**
    * Normalize a role name to its canonical form
-   * 
-   * @param role - Role name to normalize
-   * @returns Normalized role name
-   * 
-   * @example
-   * ```ts
-   * RoleUtils.normalize('admin') // 'administrator'
-   * RoleUtils.normalize('Editor') // 'editor'
-   * ```
    */
   normalize(role: string): string {
-    return roleNameMappings[role] || role.toLowerCase()
+    const normalized = role.toLowerCase()
+    return roleNameMap.get(normalized) || normalized
   },
   
   /**
    * Get the highest priority role from a list
-   * 
-   * @param roles - List of role names (will be normalized)
-   * @returns Highest priority role or undefined if no valid roles
-   * 
-   * @example
-   * ```ts
-   * RoleUtils.getHighestPriority(['editor', 'admin']) // 'administrator'
-   * ```
    */
   getHighestPriority(roles: string[]): string | undefined {
-    const normalizedRoles = roles.map(role => RoleUtils.normalize(role))
+    const normalizedRoles = new Set(roles.map(role => RoleUtils.normalize(role)))
     
-    for (const priorityRole of rolePriority) {
-      if (normalizedRoles.includes(priorityRole)) {
+    for (const priorityRole of ROLE_PRIORITY) {
+      if (normalizedRoles.has(priorityRole)) {
         return priorityRole
       }
     }
     
-    return normalizedRoles[0] // Return first role if none match priority list
+    return roles[0] ? RoleUtils.normalize(roles[0]) : undefined
   },
   
   /**
    * Extract roles from a Sanity user object
    * 
    * Handles various formats of role data including:
-   * - Array of role objects with name property
-   * - Array of role strings
-   * - Comma-separated string (legacy format)
-   * 
-   * @param user - Sanity user object
-   * @returns Array of normalized role names
+   * - Simple string array: ['admin', 'editor']
+   * - Object array with name property: [{ name: 'admin' }]
+   * - Object array with title property: [{ title: 'Administrator' }]
+   * - Mixed formats
    */
-  extractFromUser(user: SanityUser): string[] {
+  extractFromUser(user: SanityUser | null | undefined): string[] {
     if (!user?.roles) return []
     
-    
-    // Handle if roles is mistakenly a comma-separated string
+    // Handle if roles is somehow a comma-separated string (for backwards compatibility)
     if (typeof user.roles === 'string') {
-      const roles = user.roles.split(',').map(r => r.trim())
-      return roles.map(role => RoleUtils.normalize(role))
+      const roles = user.roles.split(',').map((r: string) => r.trim())
+      return roles.map((role: string) => RoleUtils.normalize(role))
+    }
+    
+    // Ensure we have an array
+    if (!Array.isArray(user.roles)) {
+      return []
     }
     
     // Handle array of roles
@@ -129,10 +89,7 @@ export const RoleUtils = {
       .map(role => RoleUtils.normalize(role))
     
     // Remove duplicates after normalization
-    const uniqueRoles = [...new Set(extractedRoles)]
-    
-    
-    return uniqueRoles
+    return [...new Set(extractedRoles)]
   },
   
   /**
@@ -163,20 +120,5 @@ export const RoleUtils = {
       : RoleUtils.extractFromUser(userOrRoles)
     const normalizedRoles = roles.map(r => RoleUtils.normalize(r))
     return userRoles.some(userRole => normalizedRoles.includes(userRole))
-  },
-  
-  
-  /**
-   * Get role name mappings (for configuration)
-   */
-  getMappings(): Readonly<Record<string, string>> {
-    return roleNameMappings
-  },
-  
-  /**
-   * Get role priority list (for configuration)
-   */
-  getPriorityList(): ReadonlyArray<string> {
-    return rolePriority
-  },
-} as const
+  }
+}

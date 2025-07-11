@@ -6,7 +6,44 @@
  * configuration setting.
  */
 
-import { getConfig } from '../config'
+// Cache debug mode state to avoid repeated config lookups
+let debugMode: boolean | null = null
+let configLoaded = false
+
+// Check environment variable directly for immediate debug mode
+const envDebugMode = process.env.NODE_ENV === 'development' || process.env.SANITY_STUDIO_DEBUG === 'true'
+
+/**
+ * Initialize debug mode from config
+ */
+async function initDebugMode(): Promise<void> {
+  if (configLoaded) return
+  
+  try {
+    // Lazy load config to avoid circular dependencies
+    const { getConfig } = await import('../config')
+    debugMode = getConfig().features.debugMode
+    configLoaded = true
+  } catch (error) {
+    console.warn('[Debug] Failed to load config, using environment fallback:', error)
+    debugMode = envDebugMode
+    configLoaded = true
+  }
+}
+
+// Start initialization but don't block
+initDebugMode().catch(() => {
+  debugMode = envDebugMode
+  configLoaded = true
+})
+
+/**
+ * Check if debug mode is enabled
+ */
+function isDebugEnabled(): boolean {
+  // Use cached value if available, otherwise fall back to env
+  return debugMode !== null ? debugMode : envDebugMode
+}
 
 /**
  * Debug logging utility
@@ -23,7 +60,7 @@ export const Debug = {
    * @param data - Optional data to log
    */
   log(component: string, message: string, data?: unknown): void {
-    if (getConfig().features.debugMode) {
+    if (isDebugEnabled()) {
       const prefix = `[${component}]`
       if (data !== undefined) {
         console.log(prefix, message, data)
@@ -41,7 +78,7 @@ export const Debug = {
    * @param error - Error object or data
    */
   error(component: string, message: string, error: unknown): void {
-    if (getConfig().features.debugMode) {
+    if (isDebugEnabled()) {
       console.error(`[${component}]`, message, error)
     }
   },
@@ -54,7 +91,7 @@ export const Debug = {
    * @param data - Optional data to log
    */
   warn(component: string, message: string, data?: unknown): void {
-    if (getConfig().features.debugMode) {
+    if (isDebugEnabled()) {
       const prefix = `[${component}]`
       if (data !== undefined) {
         console.warn(prefix, message, data)
@@ -71,10 +108,19 @@ export const Debug = {
    * @returns Object with log, error, and warn methods bound to the component
    */
   createLogger(component: string) {
+    // Return a logger that checks debug mode at creation time
+    const enabled = isDebugEnabled()
+    
     return {
-      log: (message: string, data?: unknown) => Debug.log(component, message, data),
-      error: (message: string, error: unknown) => Debug.error(component, message, error),
-      warn: (message: string, data?: unknown) => Debug.warn(component, message, data),
+      log: enabled 
+        ? (message: string, data?: unknown) => Debug.log(component, message, data)
+        : () => {},
+      error: enabled
+        ? (message: string, error: unknown) => Debug.error(component, message, error)
+        : () => {},
+      warn: enabled
+        ? (message: string, data?: unknown) => Debug.warn(component, message, data)
+        : () => {},
     }
   },
 } as const

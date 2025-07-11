@@ -91,7 +91,7 @@ class LogflareLogger implements Logger {
    * 
    * @private
    */
-  private async flush() {
+  async flush() {
     if (this.buffer.length === 0 || !this.apiKey || !this.sourceId) {
       return
     }
@@ -129,7 +129,7 @@ class LogflareLogger implements Logger {
     if (this.flushTimer) {
       timers.clearTimeout(this.flushTimer)
     }
-    this.flushTimer = timers.setTimeout(() => this.flush(), this.config.logging.flushInterval)
+    this.flushTimer = timers.setTimeout(() => this.flush(), this.config.logging.flushInterval) as NodeJS.Timeout
   }
 
   /**

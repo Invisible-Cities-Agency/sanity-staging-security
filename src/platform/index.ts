@@ -7,7 +7,6 @@
  * different Node.js versions.
  */
 
-import { getConfig } from '../config'
 
 /**
  * Platform detection and feature support
@@ -39,7 +38,7 @@ export const Platform = {
     version: () => process.versions?.node || '0.0.0',
     major: () => {
       const version = process.versions?.node || '0.0.0'
-      return parseInt(version.split('.')[0], 10)
+      return parseInt(version.split('.')[0] || '0', 10)
     },
     isV20Plus: () => Platform.node.major() >= 20,
     isV21Plus: () => Platform.node.major() >= 21,
@@ -60,7 +59,7 @@ export const Platform = {
     },
     major: () => {
       const version = Platform.react.version()
-      return parseInt(version.split('.')[0], 10)
+      return parseInt(version.split('.')[0] || '0', 10)
     },
     isV18: () => Platform.react.major() === 18,
     isV19: () => Platform.react.major() === 19,
@@ -193,7 +192,6 @@ export const performance = {
  * Platform-specific fetch options
  */
 export function getFetchOptions(): RequestInit {
-  const config = getConfig()
   const baseOptions: RequestInit = {
     credentials: 'include',
     headers: {
@@ -245,18 +243,11 @@ export const reactCompat = {
   },
 
   /**
-   * Use useDeferredValue if available (React 18+)
+   * Deferred value fallback (non-hook version)
    */
   useDeferredValue: <T>(value: T): T => {
-    try {
-      // @ts-ignore - React may not have useDeferredValue
-      if (React.useDeferredValue) {
-        // @ts-ignore
-        return React.useDeferredValue(value)
-      }
-    } catch {
-      // Fallback
-    }
+    // Simple fallback - just return the value
+    // This is a utility function, not a React hook
     return value
   },
 }

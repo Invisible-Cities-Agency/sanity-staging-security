@@ -76,7 +76,7 @@ export function StudioAuthBridge(props: StudioAuthBridgeProps) {
   const config = getConfig()
   
   // Generate CSRF token for this session
-  const [csrfToken] = React.useState(() => {
+  const [_csrfToken] = React.useState(() => {
     if (typeof crypto !== 'undefined' && crypto.randomUUID) {
       return crypto.randomUUID()
     }
@@ -86,67 +86,130 @@ export function StudioAuthBridge(props: StudioAuthBridgeProps) {
   // Store valid nonces from child iframes
   const validNonces = React.useRef<Set<string>>(new Set())
 
+  // Helper function to validate message origin
+  const isValidOrigin = React.useCallback((origin: string): boolean => {
+    return config.security.allowedOrigins.includes(origin)
+  }, [config.security.allowedOrigins])
+
+  // Helper function to validate nonce
+  const isValidNonce = (nonce: string | undefined): boolean => {
+    return !nonce || validNonces.current.has(nonce)
+  }
+
+  // Handle nonce registration
+  const handleNonceRegistration = React.useCallback((messageData: PostMessageDataUnknown, eventOrigin: string): boolean => {
+    try {
+      const nonceReg = PostMessageNonceRegistrationSchema.parse(messageData)
+      if (nonceReg.type === 'register-nonce' && nonceReg.origin === eventOrigin) {
+        validNonces.current.add(nonceReg.nonce)
+        if (config.features.debugMode) {
+          console.log('[StudioAuthBridge] Registered nonce from iframe:', {
+            nonce: nonceReg.nonce.substring(0, 8) + '...',
+            origin: eventOrigin
+          })
+        }
+        return true
+      }
+    } catch {
+      // Not a nonce registration
+    }
+    return false
+  }, [config.features.debugMode])
+
+  // Handle auth status request
+  const handleAuthRequest = React.useCallback((event: MessageEvent, messageData: PostMessageDataUnknown): void => {
+    if (!config.features.enablePostMessage || !isPostMessageAuthRequest(messageData)) {
+      return
+    }
+
+    // Validate CSRF nonce if provided
+    if (messageData.nonce && !isValidNonce(messageData.nonce)) {
+      console.warn('[StudioAuthBridge] Invalid or missing CSRF nonce:', {
+        origin: event.origin,
+        nonce: messageData.nonce?.substring(0, 8) + '...'
+      })
+      return
+    }
+
+    // Create validated response with correlation ID and nonce
+    const response = PostMessageAuthResponseSchema.parse({
+      type: 'staging-auth-status',
+      authenticated: !!currentUser?.id,
+      hasValidation: !!lastValidation,
+      isValidating,
+      correlationId: messageData.correlationId,
+      nonce: messageData.nonce // Echo back the nonce
+    })
+
+    // Send current auth status
+    if (event.source && 'postMessage' in event.source) {
+      (event.source as Window).postMessage(response, event.origin)
+    }
+
+    if (config.features.debugMode) {
+      console.log('[StudioAuthBridge] Sent auth status to iframe:', {
+        origin: event.origin,
+        authenticated: !!currentUser?.id,
+        correlationId: messageData.correlationId
+      })
+    }
+  }, [config.features.enablePostMessage, config.features.debugMode, currentUser?.id, lastValidation, isValidating])
+
+  // Handle auto-validation on user login
+  const handleAutoValidation = React.useCallback(async () => {
+    if (!config.features.autoValidation || !currentUser?.id || lastValidation) {
+      return
+    }
+
+    if (config.features.debugMode) {
+      console.log('[StudioAuthBridge] User logged in, initiating validation', {
+        hasUserId: !!currentUser.id
+      })
+    }
+
+    try {
+      const result = await validateSession()
+      
+      if (result.authorized && config.features.showToasts) {
+        toast.push({
+          status: 'success',
+          title: 'Staging Access Granted',
+          description: `You now have access to ${config.urls.staging} as ${result.role}`
+        })
+      } else if (!result.authorized && config.features.debugMode && config.features.showToasts) {
+        toast.push({
+          status: 'warning',
+          title: 'Staging Access Not Available',
+          description: result.error || 'Session validation failed'
+        })
+      }
+    } catch (error) {
+      if (config.features.debugMode) {
+        console.error('[StudioAuthBridge] Validation error:', error)
+        if (config.features.showToasts) {
+          toast.push({
+            status: 'error',
+            title: 'Auth Bridge Error',
+            description: error instanceof Error ? error.message : 'Unknown error'
+          })
+        }
+      }
+    }
+  }, [config.features.autoValidation, config.features.debugMode, config.features.showToasts, config.urls.staging, currentUser?.id, lastValidation, validateSession, toast])
+
   useEffect(() => {
     // Only run in browser
     if (typeof window === 'undefined') return
 
-    // Check if we're in debug mode
-    const isDebug = config.features.debugMode
-
-    // Auto-validate when user logs in (if enabled)
-    if (config.features.autoValidation && currentUser?.id && !lastValidation) {
-      if (isDebug) {
-        console.log('[StudioAuthBridge] User logged in, initiating validation', {
-          userId: currentUser.id,
-          userName: currentUser.name,
-          userEmail: currentUser.email
-        })
-      }
-
-      validateSession()
-        .then((result) => {
-          if (result.authorized) {
-            if (config.features.showToasts) {
-              toast.push({
-                status: 'success',
-                title: 'Staging Access Granted',
-                description: `You now have access to ${config.urls.staging} as ${result.role}`
-              })
-            }
-          } else if (isDebug && config.features.showToasts) {
-            toast.push({
-              status: 'warning',
-              title: 'Staging Access Not Available',
-              description: result.error || 'Session validation failed'
-            })
-          }
-        })
-          .catch((error) => {
-          if (isDebug) {
-            console.error('[StudioAuthBridge] Validation error:', error)
-            if (config.features.showToasts) {
-              toast.push({
-                status: 'error',
-                title: 'Auth Bridge Error',
-                description: error.message
-              })
-            }
-          }
-        })
-    }
+    // Handle auto-validation
+    handleAutoValidation()
 
     /**
      * Handle PostMessage events from embedded iframes
-     * 
-     * This handler listens for authentication status requests from iframes
-     * and responds with the current auth state. It validates the origin,
-     * message structure, and CSRF nonce before responding.
-     * 
-     * @param event - The MessageEvent from the iframe
      */
     const handleMessage = (event: MessageEvent) => {
-      // Only respond to trusted origins
-      if (!config.security.allowedOrigins.includes(event.origin)) {
+      // Validate origin first
+      if (!isValidOrigin(event.origin)) {
         console.warn('[StudioAuthBridge] Ignoring message from untrusted origin:', event.origin)
         return
       }
@@ -154,59 +217,18 @@ export function StudioAuthBridge(props: StudioAuthBridgeProps) {
       // Cast to branded unknown type for safe validation
       const messageData = event.data as PostMessageDataUnknown
       
-      // Handle nonce registration from child iframes
-      try {
-        const nonceReg = PostMessageNonceRegistrationSchema.parse(messageData)
-        if (nonceReg.type === 'register-nonce' && nonceReg.origin === event.origin) {
-          validNonces.current.add(nonceReg.nonce)
-          if (isDebug) {
-            console.log('[StudioAuthBridge] Registered nonce from iframe:', {
-              nonce: nonceReg.nonce.substring(0, 8) + '...',
-              origin: event.origin
-            })
-          }
-          return
-        }
-      } catch {
-        // Not a nonce registration, continue
+      // Try to handle nonce registration first
+      if (handleNonceRegistration(messageData, event.origin)) {
+        return
       }
       
-      if (config.features.enablePostMessage && isPostMessageAuthRequest(messageData)) {
-        // Validate CSRF nonce if provided
-        if (messageData.nonce && !validNonces.current.has(messageData.nonce)) {
-          console.warn('[StudioAuthBridge] Invalid or missing CSRF nonce:', {
-            origin: event.origin,
-            nonce: messageData.nonce?.substring(0, 8) + '...'
-          })
-          return
-        }
-
-        // Create validated response with correlation ID and nonce
-        const response = PostMessageAuthResponseSchema.parse({
-          type: 'staging-auth-status',
-          authenticated: !!currentUser?.id,
-          hasValidation: !!lastValidation,
-          isValidating,
-          correlationId: messageData.correlationId,
-          nonce: messageData.nonce // Echo back the nonce
-        })
-
-        // Send current auth status
-        event.source?.postMessage(response, event.origin)
-
-        if (isDebug) {
-          console.log('[StudioAuthBridge] Sent auth status to iframe:', {
-            origin: event.origin,
-            authenticated: !!currentUser?.id,
-            correlationId: messageData.correlationId
-          })
-        }
-      }
+      // Handle auth request
+      handleAuthRequest(event, messageData)
     }
 
     window.addEventListener('message', handleMessage)
     return () => window.removeEventListener('message', handleMessage)
-  }, [currentUser, validateSession, lastValidation, isValidating, toast, config])
+  }, [currentUser, validateSession, lastValidation, isValidating, toast, config, handleAuthRequest, handleAutoValidation, handleNonceRegistration, isValidOrigin])
 
   // Render the wrapped layout
   return <>{props.renderDefault(props)}</>

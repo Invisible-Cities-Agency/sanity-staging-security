@@ -90,15 +90,18 @@ export const SanityUserSchema = z.object({
   id: z.string(),
   name: z.string().optional(),
   email: z.string().email().optional(),
-  roles: z.array(
-    z.union([
-      z.string(),
-      z.object({
-        name: z.string().optional(),
-        title: z.string().optional()
-      })
-    ])
-  ).optional()
+  roles: z.union([
+    z.string(), // Support comma-separated string for backwards compatibility
+    z.array(
+      z.union([
+        z.string(),
+        z.object({
+          name: z.string().optional(),
+          title: z.string().optional()
+        })
+      ])
+    )
+  ]).optional()
 })
 
 /**
@@ -143,7 +146,7 @@ export const PostMessageNonceRegistrationSchema = z.object({
  * @returns True if value is a valid ValidationResponse
  */
 export function isValidationResponse(
-  value: ValidationResponseUnknown
+  value: unknown
 ): value is ValidationResponse {
   try {
     ValidationResponseSchema.parse(value)
@@ -159,7 +162,7 @@ export function isValidationResponse(
  * @returns True if value is a valid SanityUser
  */
 export function isSanityUser(
-  value: SanityUserUnknown
+  value: unknown
 ): value is SanityUser {
   try {
     SanityUserSchema.parse(value)
@@ -175,7 +178,7 @@ export function isSanityUser(
  * @returns True if value is a valid auth request
  */
 export function isPostMessageAuthRequest(
-  value: PostMessageDataUnknown
+  value: unknown
 ): value is z.infer<typeof PostMessageAuthRequestSchema> {
   try {
     PostMessageAuthRequestSchema.parse(value)
@@ -191,7 +194,7 @@ export function isPostMessageAuthRequest(
  * @returns Parsed validation response or null with logged error
  */
 export function parseValidationResponse(
-  value: ValidationResponseUnknown,
+  value: unknown,
   logger?: { error: (context: LogContext, message: string) => void }
 ): ValidationResponse | null {
   try {
@@ -214,7 +217,7 @@ export function parseValidationResponse(
  * @returns Parsed Sanity user or null with logged error
  */
 export function parseSanityUser(
-  value: SanityUserUnknown,
+  value: unknown,
   logger?: { error: (context: LogContext, message: string) => void }
 ): SanityUser | null {
   try {
@@ -231,24 +234,3 @@ export function parseSanityUser(
   }
 }
 
-/**
- * Create a branded validation response for type safety
- * @param response - Response object to brand
- * @returns Branded validation response
- */
-export function createValidationResponse(
-  response: ValidationResponse
-): ValidationResponseUnknown {
-  return response as ValidationResponseUnknown
-}
-
-/**
- * Create a branded Sanity user for type safety
- * @param user - User object to brand
- * @returns Branded Sanity user
- */
-export function createSanityUser(
-  user: SanityUser
-): SanityUserUnknown {
-  return user as SanityUserUnknown
-}

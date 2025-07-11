@@ -6,7 +6,7 @@
  * staging auth bridge within the settings document.
  */
 
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 import { Card, Stack, Text, Code, Badge, Grid, Box, Spinner } from '@sanity/ui'
 import { getConfig } from '../config'
 import { Platform } from '../platform'
