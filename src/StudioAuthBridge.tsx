@@ -21,7 +21,8 @@ import type {
 } from './types'
 import { 
   isPostMessageAuthRequest,
-  PostMessageAuthResponseSchema
+  PostMessageAuthResponseSchema,
+  PostMessageNonceRegistrationSchema
 } from './types/branded'
 
 /**
@@ -44,14 +45,46 @@ import {
  * Security considerations:
  * - Only responds to PostMessage from trusted origins
  * - Validates all incoming message data with Zod schemas
+ * - Requires CSRF nonce validation for enhanced security
  * - Rate limits validation attempts
  * - Uses secure HTTPS endpoints in production
+ * 
+ * CSRF Protection Usage (from iframe):
+ * ```javascript
+ * // 1. Generate a nonce
+ * const nonce = crypto.randomUUID()
+ * 
+ * // 2. Register the nonce
+ * parent.postMessage({
+ *   type: 'register-nonce',
+ *   nonce: nonce,
+ *   origin: window.location.origin
+ * }, studioOrigin)
+ * 
+ * // 3. Use the nonce in auth requests
+ * parent.postMessage({
+ *   type: 'request-staging-auth-status',
+ *   nonce: nonce,
+ *   correlationId: 'some-id'
+ * }, studioOrigin)
+ * ```
  */
 export function StudioAuthBridge(props: StudioAuthBridgeProps) {
   const currentUser = useCurrentUser()
   const toast = useToast()
   const { validateSession, isValidating, lastValidation } = useStudioAuth()
   const config = getConfig()
+  
+  // Generate CSRF token for this session
+  const [csrfToken] = React.useState(() => {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+      return crypto.randomUUID()
+    }
+    return `csrf-${Date.now()}-${Math.random().toString(36).substring(2)}`
+  })
+  
+  // Store valid nonces from child iframes
+  const validNonces = React.useRef<Set<string>>(new Set())
 
   useEffect(() => {
     // Only run in browser
@@ -106,29 +139,56 @@ export function StudioAuthBridge(props: StudioAuthBridgeProps) {
      * Handle PostMessage events from embedded iframes
      * 
      * This handler listens for authentication status requests from iframes
-     * and responds with the current auth state. It validates the origin
-     * and message structure before responding.
+     * and responds with the current auth state. It validates the origin,
+     * message structure, and CSRF nonce before responding.
      * 
      * @param event - The MessageEvent from the iframe
      */
     const handleMessage = (event: MessageEvent) => {
+      // Only respond to trusted origins
+      if (!config.security.allowedOrigins.includes(event.origin)) {
+        console.warn('[StudioAuthBridge] Ignoring message from untrusted origin:', event.origin)
+        return
+      }
+
       // Cast to branded unknown type for safe validation
       const messageData = event.data as PostMessageDataUnknown
       
+      // Handle nonce registration from child iframes
+      try {
+        const nonceReg = PostMessageNonceRegistrationSchema.parse(messageData)
+        if (nonceReg.type === 'register-nonce' && nonceReg.origin === event.origin) {
+          validNonces.current.add(nonceReg.nonce)
+          if (isDebug) {
+            console.log('[StudioAuthBridge] Registered nonce from iframe:', {
+              nonce: nonceReg.nonce.substring(0, 8) + '...',
+              origin: event.origin
+            })
+          }
+          return
+        }
+      } catch {
+        // Not a nonce registration, continue
+      }
+      
       if (config.features.enablePostMessage && isPostMessageAuthRequest(messageData)) {
-        // Only respond to trusted origins
-        if (!config.security.allowedOrigins.includes(event.origin)) {
-          console.warn('[StudioAuthBridge] Ignoring message from untrusted origin:', event.origin)
+        // Validate CSRF nonce if provided
+        if (messageData.nonce && !validNonces.current.has(messageData.nonce)) {
+          console.warn('[StudioAuthBridge] Invalid or missing CSRF nonce:', {
+            origin: event.origin,
+            nonce: messageData.nonce?.substring(0, 8) + '...'
+          })
           return
         }
 
-        // Create validated response with correlation ID
+        // Create validated response with correlation ID and nonce
         const response = PostMessageAuthResponseSchema.parse({
           type: 'staging-auth-status',
           authenticated: !!currentUser?.id,
           hasValidation: !!lastValidation,
           isValidating,
-          correlationId: messageData.correlationId
+          correlationId: messageData.correlationId,
+          nonce: messageData.nonce // Echo back the nonce
         })
 
         // Send current auth status

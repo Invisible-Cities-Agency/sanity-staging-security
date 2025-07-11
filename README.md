@@ -259,6 +259,10 @@ stagingAuthBridge({
 
 ## API Reference
 
+### Next.js API Contract
+
+For detailed information about implementing the required API endpoints in your Next.js application, see the [Next.js API Contract documentation](./docs/nextjs-api-contract.md).
+
 ### Plugin Options
 
 ```ts

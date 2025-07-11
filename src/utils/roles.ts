@@ -7,7 +7,6 @@
  */
 
 import type { SanityUser } from '../types'
-import { Debug } from './debug'
 
 /**
  * Role name mappings for normalization
@@ -15,13 +14,29 @@ import { Debug } from './debug'
  */
 const roleNameMappings: Record<string, string> = {
   'admin': 'administrator',
+  'Admin': 'administrator',
+  'ADMIN': 'administrator',
   'administrator': 'administrator',
-  'editor': 'editor',
-  'Editor': 'editor',
-  'viewer': 'viewer',
-  'Viewer': 'viewer',
+  'Administrator': 'administrator',
+  'ADMINISTRATOR': 'administrator',
+  'dev': 'developer',
+  'Dev': 'developer',
+  'DEV': 'developer',
   'developer': 'developer',
   'Developer': 'developer',
+  'DEVELOPER': 'developer',
+  'editor': 'editor',
+  'Editor': 'editor',
+  'EDITOR': 'editor',
+  'contrib': 'contributor',
+  'Contrib': 'contributor',
+  'CONTRIB': 'contributor',
+  'contributor': 'contributor',
+  'Contributor': 'contributor',
+  'CONTRIBUTOR': 'contributor',
+  'viewer': 'viewer',
+  'Viewer': 'viewer',
+  'VIEWER': 'viewer',
 }
 
 /**
@@ -32,6 +47,7 @@ const rolePriority: string[] = [
   'administrator',
   'developer', 
   'editor',
+  'contributor',
   'viewer'
 ]
 
@@ -92,16 +108,10 @@ export const RoleUtils = {
   extractFromUser(user: SanityUser): string[] {
     if (!user?.roles) return []
     
-    const debug = Debug.createLogger('RoleUtils.extractFromUser')
-    
-    // Debug logging
-    debug.log('Input user.roles:', user.roles)
-    debug.log('Type of user.roles:', typeof user.roles)
     
     // Handle if roles is mistakenly a comma-separated string
     if (typeof user.roles === 'string') {
       const roles = user.roles.split(',').map(r => r.trim())
-      debug.log('Split string roles:', roles)
       return roles.map(role => RoleUtils.normalize(role))
     }
     
@@ -115,43 +125,46 @@ export const RoleUtils = {
         }
         return null
       })
-      .filter((role): role is string => role !== null)
+      .filter((role): role is string => role !== null && role !== '')
       .map(role => RoleUtils.normalize(role))
     
     // Remove duplicates after normalization
     const uniqueRoles = [...new Set(extractedRoles)]
     
-    debug.log('Extracted roles:', extractedRoles)
-    debug.log('Unique normalized roles:', uniqueRoles)
     
     return uniqueRoles
   },
   
   /**
-   * Check if a user has a specific role
+   * Check if a user/roles array has a specific role
    * 
-   * @param user - Sanity user object
+   * @param userOrRoles - Sanity user object or array of role strings
    * @param role - Role to check for (will be normalized)
    * @returns True if user has the role
    */
-  hasRole(user: SanityUser, role: string): boolean {
-    const userRoles = RoleUtils.extractFromUser(user)
+  hasRole(userOrRoles: SanityUser | string[], role: string): boolean {
+    const userRoles = Array.isArray(userOrRoles) 
+      ? userOrRoles.map(r => RoleUtils.normalize(r))
+      : RoleUtils.extractFromUser(userOrRoles)
     const normalizedRole = RoleUtils.normalize(role)
     return userRoles.includes(normalizedRole)
   },
   
   /**
-   * Check if a user has any of the specified roles
+   * Check if a user/roles array has any of the specified roles
    * 
-   * @param user - Sanity user object
+   * @param userOrRoles - Sanity user object or array of role strings
    * @param roles - Roles to check for (will be normalized)
    * @returns True if user has any of the roles
    */
-  hasAnyRole(user: SanityUser, roles: string[]): boolean {
-    const userRoles = RoleUtils.extractFromUser(user)
-    const normalizedRoles = roles.map(role => RoleUtils.normalize(role))
+  hasAnyRole(userOrRoles: SanityUser | string[], roles: string[]): boolean {
+    const userRoles = Array.isArray(userOrRoles) 
+      ? userOrRoles.map(r => RoleUtils.normalize(r))
+      : RoleUtils.extractFromUser(userOrRoles)
+    const normalizedRoles = roles.map(r => RoleUtils.normalize(r))
     return userRoles.some(userRole => normalizedRoles.includes(userRole))
   },
+  
   
   /**
    * Get role name mappings (for configuration)

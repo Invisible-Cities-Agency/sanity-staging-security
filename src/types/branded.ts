@@ -111,7 +111,8 @@ export type SanityUser = z.infer<typeof SanityUserSchema>
  */
 export const PostMessageAuthRequestSchema = z.object({
   type: z.literal('request-staging-auth-status'),
-  correlationId: z.string().optional()
+  correlationId: z.string().optional(),
+  nonce: z.string().optional() // CSRF protection nonce
 })
 
 /**
@@ -122,7 +123,18 @@ export const PostMessageAuthResponseSchema = z.object({
   authenticated: z.boolean(),
   hasValidation: z.boolean(),
   isValidating: z.boolean(),
-  correlationId: z.string().optional()
+  correlationId: z.string().optional(),
+  nonce: z.string().optional() // Echo back the nonce for validation
+})
+
+/**
+ * Zod schema for PostMessage nonce registration
+ * Child iframes must register their nonce before making requests
+ */
+export const PostMessageNonceRegistrationSchema = z.object({
+  type: z.literal('register-nonce'),
+  nonce: z.string(),
+  origin: z.string()
 })
 
 /**

@@ -85,19 +85,31 @@ export async function validateStagingAccess(
     : config.urls.staging
   const apiUrl = baseUrl + config.urls.apiEndpoints.validateV3
 
-  // Get current URL and params for diagnostic logging
+  // Get current URL and params for diagnostic logging (redacted in production)
+  const isProduction = process.env.NODE_ENV === 'production'
   const currentUrl = typeof window !== 'undefined' ? window.location.href : 'unknown'
-  const urlParams = typeof window !== 'undefined' ? Object.fromEntries(new URLSearchParams(window.location.search)) : {}
   
-  logger.info({
+  // Redact sensitive information in production
+  const logData = {
     action: 'validate_staging_access_start',
-    apiUrl,
+    apiUrl: isProduction ? apiUrl.replace(/https?:\/\/[^\/]+/, '[REDACTED]') : apiUrl,
     tokenLength: sessionToken.length,
-    userRoles,
-    currentUrl,
-    urlParams,
-    referrer: typeof document !== 'undefined' ? document.referrer : 'unknown'
-  }, 'Initiating staging access validation')
+    userRoles: userRoles.length, // Only log count, not actual roles
+    hasUserInfo: !!userName || !!userEmail,
+    environment: process.env.NODE_ENV
+  }
+  
+  // Only include detailed info in development/debug mode
+  if (!isProduction && config.features.debugMode) {
+    Object.assign(logData, {
+      currentUrl,
+      urlParams: typeof window !== 'undefined' ? 
+        Object.keys(new URLSearchParams(window.location.search)) : [], // Only keys, not values
+      userRolesDetail: userRoles
+    })
+  }
+  
+  logger.info(logData, 'Initiating staging access validation')
 
   try {
     // Use platform-optimized fetch
@@ -154,7 +166,7 @@ export async function validateStagingAccess(
     logger.info({
       action: 'validate_staging_access_complete',
       authorized: result.authorized,
-      role: result.role,
+      role: isProduction ? '[REDACTED]' : result.role,
       duration: Date.now() - startTime
     }, 'Staging access validation completed')
 
@@ -163,7 +175,7 @@ export async function validateStagingAccess(
     logger.error({
       action: 'validate_staging_access_error',
       error: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : undefined,
+      stack: !isProduction && error instanceof Error ? error.stack : undefined,
       duration: Date.now() - startTime
     }, 'Failed to validate staging access')
 

@@ -7,11 +7,12 @@
  * handles session validation with the staging environment.
  */
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { useCurrentUser } from 'sanity'
 import { validateStagingAccess } from '../utils/validateStaging'
 import { Debug } from '../utils/debug'
 import { RoleUtils } from '../utils/roles'
+import { throttleAsync } from '../utils/throttle'
 import type { 
   UseStudioAuthReturn, 
   ValidationResult,
@@ -65,12 +66,9 @@ export function useStudioAuth(): UseStudioAuthReturn {
   const [error, setError] = useState<Error | null>(null)
 
   /**
-   * Validate the current user's session with the staging environment
-   * 
-   * @throws {Error} If no user session is found or validation fails
-   * @returns {Promise<ValidationResult>} The validation result
+   * Internal validation function (not throttled)
    */
-  const validateSession = useCallback(async (): Promise<ValidationResult> => {
+  const validateSessionInternal = useCallback(async (): Promise<ValidationResult> => {
     // Cast current user to branded type and validate
     const userUnknown = currentUser as SanityUserUnknown
     
@@ -121,6 +119,15 @@ export function useStudioAuth(): UseStudioAuthReturn {
     }
   }, [currentUser])
 
+  /**
+   * Throttled validation function to prevent API spam
+   * Multiple calls within 2 seconds will return the same promise
+   */
+  const validateSession = useMemo(
+    () => throttleAsync(validateSessionInternal, 2000),
+    [validateSessionInternal]
+  )
+
   const clearValidation = useCallback(() => {
     setLastValidation(null)
     setError(null)
@@ -148,10 +155,25 @@ export function useStudioAuth(): UseStudioAuthReturn {
  * @internal
  */
 async function getSessionToken(): Promise<string | null> {
-  // Generate a placeholder token that indicates we're validating from Studio
+  // Generate a cryptographically secure token for validation
   // The actual validation will happen server-side based on the origin and user info
   const timestamp = Date.now()
-  const random = Math.random().toString(36).substring(2)
+  
+  // Use crypto.randomUUID if available (modern browsers and Node 16+)
+  // Fall back to crypto.getRandomValues for broader compatibility
+  let random: string
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    random = crypto.randomUUID()
+  } else if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+    const array = new Uint8Array(16)
+    crypto.getRandomValues(array)
+    random = Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('')
+  } else {
+    // Last resort fallback - should rarely happen in modern environments
+    console.warn('[StudioAuth] Crypto API not available, using less secure fallback')
+    random = Date.now().toString(36) + Math.random().toString(36).substring(2)
+  }
+  
   const token = `studio-validation-${timestamp}-${random}`
   
   return token

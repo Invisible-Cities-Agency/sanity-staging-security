@@ -20,13 +20,17 @@ tsconfig.*.json
 .editorconfig
 .gitignore
 .npmignore
+tsup.config.ts
+vitest.config.ts
 
 # Test files
 test/
 tests/
 __tests__/
 *.test.ts
+*.test.js
 *.spec.ts
+*.spec.js
 coverage/
 .nyc_output/
 
@@ -40,6 +44,7 @@ docs/
 !README.md
 !CHANGELOG.md
 !LICENSE
+CONTRIBUTING.md
 
 # Examples
 examples/
@@ -51,3 +56,4 @@ example/
 .sanity/
 debug/
 *.log
+v2-incompatible.js

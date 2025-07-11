@@ -25,7 +25,8 @@ describe('Configuration', () => {
     const config = getConfig()
     
     expect(config.logging.provider).toBe('console')
-    expect(config.logging.level).toBe('info')
+    // In development mode (NODE_ENV=development), level is 'debug'
+    expect(config.logging.level).toBe('debug')
     expect(config.logging.flushInterval).toBe(1000)
   })
 })

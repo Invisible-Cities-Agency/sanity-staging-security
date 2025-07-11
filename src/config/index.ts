@@ -98,8 +98,14 @@ async function buildConfig(): Promise<StagingAuthConfig> {
   const isDevelopment = env.NODE_ENV === 'development'
   const isDebug = env.SANITY_STUDIO_DEBUG === 'true' || isDevelopment
 
-  // Start with defaults
-  const config = { ...defaults }
+  // Start with deep copy of defaults to avoid mutations
+  const config: StagingAuthConfig = {
+    ...defaults,
+    urls: { ...defaults.urls, apiEndpoints: { ...defaults.urls.apiEndpoints } },
+    security: { ...defaults.security, allowedOrigins: [...defaults.security.allowedOrigins] },
+    logging: { ...defaults.logging },
+    features: { ...defaults.features }
+  }
   
   // Check for Edge Config overrides (Vercel only)
   if (Platform.deployment.isVercel() && vercel.edgeConfig.isAvailable()) {
@@ -183,9 +189,13 @@ async function buildConfig(): Promise<StagingAuthConfig> {
 
   // Add development origins in dev mode
   if (isDevelopment) {
-    config.security.allowedOrigins.push('http://localhost:3000')
-    config.security.allowedOrigins.push('http://localhost:3333')
-    config.security.allowedOrigins.push('http://localhost:3334')
+    // Create new array to avoid mutating defaults
+    config.security.allowedOrigins = [
+      ...config.security.allowedOrigins,
+      'http://localhost:3000',
+      'http://localhost:3333', 
+      'http://localhost:3334'
+    ]
   }
 
   return config
@@ -196,11 +206,32 @@ async function buildConfig(): Promise<StagingAuthConfig> {
  */
 let cachedConfig: StagingAuthConfig | null = null
 let configPromise: Promise<StagingAuthConfig> | null = null
+let configInitialized = false
+
+/**
+ * Initialize configuration on module load
+ * This ensures config is ready before first use
+ */
+async function initializeConfig(): Promise<void> {
+  if (configInitialized) return
+  
+  try {
+    cachedConfig = await buildConfig()
+    configInitialized = true
+  } catch (error) {
+    console.error('[StagingAuthBridge] Failed to initialize config:', error)
+    cachedConfig = buildSyncConfig()
+    configInitialized = true
+  }
+}
+
+// Start initialization immediately
+const initPromise = initializeConfig()
 
 /**
  * Get the staging auth bridge configuration
  * 
- * Returns a cached configuration object that combines defaults with
+ * Returns a configuration object that combines defaults with
  * environment overrides and Edge Config values. The configuration is 
  * validated and optimized for the current platform.
  * 
@@ -219,6 +250,9 @@ let configPromise: Promise<StagingAuthConfig> | null = null
  * 1. Default values
  * 2. Environment variable overrides  
  * 3. Edge Config overrides (highest priority)
+ * 
+ * Note: First call may use sync config if Edge Config is still loading.
+ * Subsequent calls will always use the fully loaded config.
  */
 export function getConfig(): StagingAuthConfig {
   // If we have a cached config, return it immediately
@@ -226,30 +260,34 @@ export function getConfig(): StagingAuthConfig {
     return cachedConfig
   }
   
-  // If we're already building config, wait for it
-  if (configPromise) {
-    // Return defaults while async config loads
-    return defaults
-  }
+  // If still initializing, return sync config for first call
+  // This ensures the function remains synchronous for compatibility
+  console.warn('[StagingAuthBridge] Config still initializing, using sync fallback')
+  cachedConfig = buildSyncConfig()
+  return cachedConfig
+}
+
+/**
+ * Get the staging auth bridge configuration (async version)
+ * 
+ * This ensures you always get the fully loaded configuration including
+ * Edge Config values. Use this when you can handle async operations.
+ * 
+ * @returns Promise resolving to the complete configuration object
+ * 
+ * @example
+ * ```ts
+ * import { getConfigAsync } from './config'
+ * 
+ * const config = await getConfigAsync()
+ * ```
+ */
+export async function getConfigAsync(): Promise<StagingAuthConfig> {
+  // Wait for initialization to complete
+  await initPromise
   
-  // Start building config (async due to Edge Config)
-  configPromise = buildConfig()
-    .then(config => {
-      cachedConfig = config
-      configPromise = null
-      return config
-    })
-    .catch(error => {
-      console.error('[StagingAuthBridge] Failed to build config:', error)
-      configPromise = null
-      // Fallback to sync config on error
-      cachedConfig = buildSyncConfig()
-      return cachedConfig
-    })
-  
-  // Return defaults while async config loads
-  // The next call will get the cached config
-  return defaults
+  // Return cached config (guaranteed to exist after init)
+  return cachedConfig || buildSyncConfig()
 }
 
 /**
@@ -261,8 +299,14 @@ function buildSyncConfig(): StagingAuthConfig {
   const isDevelopment = env.NODE_ENV === 'development'
   const isDebug = env.SANITY_STUDIO_DEBUG === 'true' || isDevelopment
 
-  // Start with defaults
-  const config = { ...defaults }
+  // Start with deep copy of defaults to avoid mutations
+  const config: StagingAuthConfig = {
+    ...defaults,
+    urls: { ...defaults.urls, apiEndpoints: { ...defaults.urls.apiEndpoints } },
+    security: { ...defaults.security, allowedOrigins: [...defaults.security.allowedOrigins] },
+    logging: { ...defaults.logging },
+    features: { ...defaults.features }
+  }
   
   // Apply environment overrides
   config.urls.staging = env.SANITY_STUDIO_STAGING_URL || config.urls.staging
