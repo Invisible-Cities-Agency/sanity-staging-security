@@ -1,0 +1,8 @@
+{
+  "parts": [
+    {
+      "implements": "part:@sanity/base/studio-hints-config",
+      "path": "src/index.ts"
+    }
+  ]
+}

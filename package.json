@@ -1,0 +1,102 @@
+{
+  "name": "@invisiblecities/sanity-staging-security",
+  "version": "1.0.0",
+  "description": "Secure staging authentication bridge for Sanity Studio v3+ that enables role-based access control for preview environments",
+  "keywords": [
+    "sanity",
+    "sanity-plugin",
+    "staging",
+    "authentication",
+    "preview",
+    "access-control",
+    "vercel",
+    "edge-runtime"
+  ],
+  "homepage": "https://github.com/invisiblecities/sanity-staging-security#readme",
+  "bugs": {
+    "url": "https://github.com/invisiblecities/sanity-staging-security/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/invisiblecities/sanity-staging-security.git"
+  },
+  "license": "MIT",
+  "author": "Invisible Cities <hello@invisiblecities.com>",
+  "type": "module",
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "source": "./src/index.ts",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "src",
+    "CHANGELOG.md",
+    "LICENSE",
+    "README.md",
+    "sanity.json"
+  ],
+  "scripts": {
+    "build": "plugin-kit verify-package --silent && pkg-utils build --strict --check --clean",
+    "clean": "rimraf dist",
+    "format": "prettier --write --cache --ignore-unknown .",
+    "link-watch": "plugin-kit link-watch",
+    "lint": "eslint .",
+    "prepublishOnly": "npm run build",
+    "type-check": "tsc --noEmit",
+    "watch": "pkg-utils watch --strict"
+  },
+  "dependencies": {
+    "@sanity/incompatible-plugin": "^1.0.4",
+    "@sanity/ui": "^2.8.9",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@sanity/eslint-config-studio": "^4.0.0",
+    "@sanity/pkg-utils": "^6.11.12",
+    "@sanity/plugin-kit": "^4.0.0",
+    "@types/react": "^18.3.11",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-prettier": "^5.2.1",
+    "eslint-plugin-react": "^7.35.0",
+    "eslint-plugin-react-hooks": "^4.6.2",
+    "prettier": "^3.3.3",
+    "prettier-plugin-packagejson": "^2.5.3",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "rimraf": "^5.0.10",
+    "sanity": "^3.62.3",
+    "styled-components": "^6.1.13",
+    "typescript": "^5.6.3"
+  },
+  "peerDependencies": {
+    "react": "^18 || ^19",
+    "sanity": "^3.62.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "sanity": {
+    "studio": {
+      "supportedReleases": [
+        {
+          "majorVersion": 3
+        }
+      ]
+    }
+  }
+}

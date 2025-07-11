@@ -1,0 +1,53 @@
+# Source files (TypeScript)
+src/
+*.ts
+!*.d.ts
+
+# Development files
+.github/
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Config files
+.eslintrc*
+.prettierrc*
+tsconfig.json
+tsconfig.*.json
+.editorconfig
+.gitignore
+.npmignore
+
+# Test files
+test/
+tests/
+__tests__/
+*.test.ts
+*.spec.ts
+coverage/
+.nyc_output/
+
+# Build tools
+.turbo/
+.parcel-cache/
+
+# Documentation source
+docs/
+*.md
+!README.md
+!CHANGELOG.md
+!LICENSE
+
+# Examples
+examples/
+example/
+
+# Misc
+.env*
+.cache/
+.sanity/
+debug/
+*.log
