@@ -4,7 +4,7 @@
  * 
  * This module provides the core validation logic for authenticating Sanity Studio
  * users with the staging environment. It handles API communication, error handling,
- * rate limiting, and comprehensive logging.
+ * rate limiting, and detailed logging.
  */
 
 import { createLogflareLogger } from './logflare'
@@ -35,7 +35,7 @@ const loggerPromise = createLogflareLogger({
  * - Environment-specific API routing
  * - Secure credential transmission
  * - Rate limiting with proper error messages
- * - Comprehensive logging for debugging
+ * - Detailed logging for debugging
  * - Type-safe response parsing
  * 
  * @param sessionToken - The session token from Sanity Studio

@@ -1,6 +1,6 @@
 # @invisiblecities/sanity-staging-security
 
-A comprehensive security solution for Sanity Studio v3+ that provides role-based access control and authentication for staging/preview environments. Built with TypeScript, optimized for Vercel Edge Runtime, and designed for enterprise workflows.
+A security plugin for Sanity Studio v3+ that adds role-based access control to staging and preview environments. Built with TypeScript and optimized for edge runtimes like Vercel.
 
 ## Features
 
@@ -247,7 +247,7 @@ The plugin includes automatic fallbacks for React 19's new APIs while maintainin
 
 ### Debug Mode
 
-Enable comprehensive logging:
+Enable debug logging:
 
 ```ts
 stagingAuthBridge({

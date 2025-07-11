@@ -39,11 +39,11 @@ pnpm dev:https
 
 ### Code Style
 
-We follow enterprise TypeScript best practices:
+We follow these TypeScript guidelines:
 
 1. **No `any` types** - Use branded unknown types for external data
 2. **Runtime validation** - Use Zod for API boundaries
-3. **Comprehensive JSDoc** - Document all public APIs
+3. **JSDoc comments** - Document all public APIs
 4. **Type safety first** - Prefer compile-time safety
 
 ### Testing

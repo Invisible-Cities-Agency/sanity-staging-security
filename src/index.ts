@@ -2,7 +2,7 @@
  * @fileoverview Staging Auth Bridge Plugin for Sanity Studio
  * @module staging-auth-bridge
  * 
- * This plugin provides seamless authentication bridging between Sanity Studio
+ * This plugin connects Sanity Studio authentication with
  * and the NextJS staging environment. It automatically validates user sessions
  * when they log into Sanity and grants them access to the staging site based
  * on their Sanity roles.

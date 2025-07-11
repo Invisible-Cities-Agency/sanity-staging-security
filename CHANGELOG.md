@@ -18,7 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Vercel Edge Runtime optimizations
 - React 18/19 compatibility layer
 - TypeScript support with branded types
-- Comprehensive JSDoc documentation
+- JSDoc documentation for all APIs
 - Role normalization (admin → administrator)
 - Debug mode for troubleshooting
 - Environment variable configuration
@@ -34,7 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Developer Experience
 - Zero-config defaults
 - Detailed error messages
-- Comprehensive README documentation
+- Detailed README with examples
 - TypeScript types for all APIs
 - ESLint and Prettier configuration
 - Example Next.js integration code

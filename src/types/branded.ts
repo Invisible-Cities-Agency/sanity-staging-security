@@ -2,8 +2,8 @@
  * @fileoverview Branded type definitions for the Staging Auth Bridge plugin
  * @module staging-auth-bridge/types/branded
  * 
- * This module provides branded unknown types following enterprise TypeScript
- * philosophy to ensure type safety and observability throughout the authentication
+ * This module provides branded unknown types that ensure type safety 
+ * and error tracing throughout the authentication
  * flow. These types replace any usage of 'any' with properly branded unknown types
  * that enable error tracing and observability metrics.
  */
