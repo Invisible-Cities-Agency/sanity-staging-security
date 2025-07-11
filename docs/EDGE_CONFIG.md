@@ -38,13 +38,13 @@ vercel env pull
 #### Via CLI
 ```bash
 # Add individual items
-vercel edge-config add stagingUrl "https://staging.pocmarketing.org"
+vercel edge-config add stagingUrl "https://staging.example.com"
 vercel edge-config add feature_autoValidation true
 vercel edge-config add feature_debugMode false
 vercel edge-config add rateLimitMs 60000
 
 # Add allowed origins (as JSON array)
-vercel edge-config add allowedOrigins '["https://staging.pocmarketing.org", "https://localhost:3000"]'
+vercel edge-config add allowedOrigins '["https://staging.example.com", "https://localhost:3000"]'
 ```
 
 ## Configuration Schema
@@ -53,9 +53,9 @@ vercel edge-config add allowedOrigins '["https://staging.pocmarketing.org", "htt
 
 ```json
 {
-  "stagingUrl": "https://staging.pocmarketing.org",
+  "stagingUrl": "https://staging.example.com",
   "allowedOrigins": [
-    "https://staging.pocmarketing.org",
+    "https://staging.example.com",
     "https://localhost:3000"
   ],
   "rateLimitMs": 60000,
@@ -157,7 +157,7 @@ Dynamic SEO configuration:
 ```json
 {
   "defaultMetaTags": {
-    "ogImage": "https://pocmarketing.org/default-og.jpg"
+    "ogImage": "https://example.com/default-og.jpg"
   },
   "robotsRules": {
     "staging": "noindex, nofollow",

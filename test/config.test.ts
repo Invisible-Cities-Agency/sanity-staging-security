@@ -9,7 +9,7 @@ describe('Configuration', () => {
   it('should return default configuration', () => {
     const config = getConfig()
     
-    expect(config.urls.staging).toBe('https://staging.pocmarketing.org')
+    expect(config.urls.staging).toBe('https://staging.example.com')
     expect(config.security.tokenValidityDays).toBe(7)
     expect(config.features.autoValidation).toBe(true)
   })
@@ -17,7 +17,7 @@ describe('Configuration', () => {
   it('should have correct default allowed origins', () => {
     const config = getConfig()
     
-    expect(config.security.allowedOrigins).toContain('https://staging.pocmarketing.org')
+    expect(config.security.allowedOrigins).toContain('https://staging.example.com')
     expect(config.security.allowedOrigins).toContain('https://localhost:3000')
   })
 

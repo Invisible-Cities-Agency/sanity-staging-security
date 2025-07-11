@@ -39,7 +39,7 @@ pnpm dev:https
 
 ### Code Style
 
-We follow POCMA's TypeScript philosophy:
+We follow enterprise TypeScript best practices:
 
 1. **No `any` types** - Use branded unknown types for external data
 2. **Runtime validation** - Use Zod for API boundaries

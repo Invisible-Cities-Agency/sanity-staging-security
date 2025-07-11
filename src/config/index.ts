@@ -56,7 +56,7 @@ export const getHighestPriorityRole = (roles: string[]) => RoleUtils.getHighestP
  */
 const defaults: StagingAuthConfig = {
   urls: {
-    staging: 'https://staging.pocmarketing.org',
+    staging: 'https://staging.example.com',
     development: [
       'https://localhost:3000',
       'https://localhost:3334',
@@ -71,7 +71,7 @@ const defaults: StagingAuthConfig = {
     tokenValidityDays: 7,
     rateLimitRetryMs: 60000, // 1 minute
     allowedOrigins: [
-      'https://staging.pocmarketing.org',
+      'https://staging.example.com',
       'https://localhost:3000',
       'https://localhost:3334',
     ],
